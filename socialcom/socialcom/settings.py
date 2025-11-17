@@ -103,6 +103,7 @@ SIMPLE_JWT = {
     'AUT_HEADER_TYPES': ('Bearer',),
 }
 
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
