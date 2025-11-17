@@ -51,7 +51,7 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 
 class EmailVerification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODELS, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
 
