@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Profile
+from .models import User, Profile, Role, UserRole
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth import authenticate
@@ -7,21 +7,29 @@ from django.contrib.auth import authenticate
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
+    role = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'password', 'role', 'bio', 'profile_image']
 
         def create(self, validated_data):
+            role_name = validated_data.pop('role')
+            try:
+                role = Role.objects.get(name_iexact=role_name)
+            except Role.DoesNotExist:
+                raise serializers.ValidationError({"role":"Invalid role name."})
+            
             user = User.objects.create_user(
                 username = validated_data['email'],
-                role = validated_data['role'],
+                role = role,
                 bio = validated_data.get('bio', ''),
                 profile_image = validated_data.get('profile_image', None)
             )
 
             user.set_password(validated_data['password'])
             user.save()
+
             return user
         
 
@@ -38,10 +46,17 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "Invalid email or password."})
         # Generate tokens
         refresh = RefreshToken.for_user(user)
+
+        roles = UserRole.objects.filter(user=user).values_list("role__name", flat=True)
         return {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "email": user.email
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "username": user.username,
+                "roles": list(roles)
+            }
         }
         
 
