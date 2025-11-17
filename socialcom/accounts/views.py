@@ -1,12 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ProfileSerializer, verifyEmailSerializer, RequestPasswordResetSerializer
+from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ProfileSerializer, verifyEmailSerializer, RequestPasswordResetSerializer, ResetPasswordSerializer
 from .generates import generate_code
 from .models import EmailVerification, User, PasswordResetOTP
 from django.core.mail import send_mail
 
-
+from .send_mails import send_verification_mail, send_reset_password_mail
 
 
 class RegisterView(APIView):
@@ -14,16 +14,9 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            code = generate_code()
-            EmailVerification.objects.create(user=user, code=code)
-
-            # send email
-            send_mail(
-                subject="Verify Your Email",
-                message=f"Your Verification code is: {code}",
-                from_email="no-reply@fashioncommerce.com",
-                recipient_list=[user.email]
-            )
+            #code = generate_code()
+            EmailVerification.objects.create(user=user)
+            send_verification_mail(user.id)
             return Response(
                 {"message": "Account created successfully", "user": serializer.data},
                 status=status.HTTP_201_CREATED
@@ -98,7 +91,6 @@ class RequestPasswordResetView(APIView):
     def post(self, request):
         serializer = RequestPasswordResetSerializer(data=request.data)
 
-
         if serializer.is_valid():
             email = serializer.validated_data['email']
 
@@ -107,12 +99,41 @@ class RequestPasswordResetView(APIView):
             except User.DoesNotExist:
                 return Response({"detail": "Email not found"}, status=status.HTTP_400_BAD_REQUEST)
             
-            code = generate_code()
-            PasswordResetOTP.object.create(user=user, code=code)
+            PasswordResetOTP.object.create(user=user)
+            send_reset_password_mail()
+            
 
-            send_mail(
-                subject="password reset otp",
-                message=f"reset otp code: {code}",
-                from_email="no-reply@fashioncommerce.com",
-                recipient_list= [user.email]
-            )
+            
+
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            code = serializer.validated_data['code']
+            new_password = serializer.validated_data['new_password']
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({"detail": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            reset_obj = PasswordResetOTP.objects.filter(user=user, code=code).first()
+
+            if not reset_obj:
+                return Response({"detail": "Invalid code"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if reset_obj.is_expired():
+                return Response({"detail": "Code expired"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # change password
+            user.set_password(new_password)
+            user.save()
+
+            reset_obj.delete()
+
+            return Response({"detail": "Password reset succesfully"}, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

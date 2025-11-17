@@ -51,8 +51,8 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 
 class EmailVerification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    code = models.CharField(max_length=6)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
+    code = models.CharField(max_length=6, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
