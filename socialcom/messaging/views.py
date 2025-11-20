@@ -65,3 +65,15 @@ class ListMessageView(APIView):
         
         messages = conversation.messages.order_bu("timestamp")
         return Response(MessageSerializer(messages, many=True).data)
+    
+
+class MarkAsReadView(APIView):
+    def post(self, request, conversation_id):
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+
+        if request.user not in conversation.participants.all():
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+
+        return Response({"message": "Messages marked as read"})
