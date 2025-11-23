@@ -63,7 +63,7 @@ class ListMessageView(APIView):
         if request.user not in conversation.participatnts.all():
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         
-        messages = conversation.messages.order_bu("timestamp")
+        messages = conversation.messages.order_by("timestamp")
         return Response(MessageSerializer(messages, many=True).data)
     
 

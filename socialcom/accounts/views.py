@@ -6,7 +6,7 @@ from .generates import generate_code
 from .models import EmailVerification, User, PasswordResetOTP
 from django.core.mail import send_mail
 
-from .send_mails import send_verification_mail, send_reset_password_mail
+from .send_mails import send_verification_mail, send_reset_password_mail, code
 
 
 class RegisterView(APIView):
@@ -14,8 +14,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            #code = generate_code()
-            EmailVerification.objects.create(user=user)
+            EmailVerification.objects.create(user=user, code=code)
             send_verification_mail(user.id)
             return Response(
                 {"message": "Account created successfully", "user": serializer.data},
@@ -81,7 +80,7 @@ class VerifyEmailView(APIView):
                 user.save()
 
                 verification.delete()
-                return Response({"detail": "Verification failed"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"detail": "Verification sucessful"}, status=status.HTTP_200_OK)
             except Exception:
                 return Response({"detail" : "Verification failed"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -99,8 +98,14 @@ class RequestPasswordResetView(APIView):
             except User.DoesNotExist:
                 return Response({"detail": "Email not found"}, status=status.HTTP_400_BAD_REQUEST)
             
-            PasswordResetOTP.object.create(user=user)
-            send_reset_password_mail()
+            PasswordResetOTP.objects.create(user=user, code=code)
+            send_reset_password_mail(user.id)
+            return Response(
+                {"message": "The code has been sent your email", "email": email},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
             
 
             

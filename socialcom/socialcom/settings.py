@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'follows',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
+    'channels'
 ]
 
 MIDDLEWARE = [
