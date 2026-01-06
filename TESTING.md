@@ -20,6 +20,25 @@ Or on cmd.exe:
 pip install -r requirements-dev.txt
 ```
 
+### Quick setup scripts
+
+Two helper scripts are provided to set up the virtual environment and install dependencies:
+
+- Windows PowerShell: `scripts\setup.ps1` (run with PowerShell; pass `-InstallDev` to also install dev deps)
+- Unix / macOS: `scripts/setup.sh` (run with `./scripts/setup.sh` or `./scripts/setup.sh --dev`)
+
+Example (PowerShell):
+
+```
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process; .\scripts\setup.ps1 -InstallDev
+```
+
+Example (Unix):
+
+```
+./scripts/setup.sh --dev
+```
+
 ## Run tests
 
 Run the Django test suite for the messaging app:
