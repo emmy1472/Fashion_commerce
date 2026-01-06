@@ -4,6 +4,7 @@ from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
 from .models import Follow
 from .serializers import FollowSerializer
+from accounts.serializers import UserListSerializer
 from accounts.models import User
 
 class FollowUserView(APIView):
@@ -14,15 +15,14 @@ class FollowUserView(APIView):
 
         if request.user == target_user:
             return Response({"error": "you cannot follow yourself."}, status=status.HTTP_400_BAD_REQUEST)
-        
         follow, created = Follow.objects.get_or_create(
-            followers = request.user,
+            follower=request.user,
             following=target_user
         )
 
         if not created:
             return Response({"message": "Already following this user."}, status=status.HTTP_200_OK)
-        
+
         serializer = FollowSerializer(follow)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -51,9 +51,10 @@ class FollowersListView(APIView):
 
     def get(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
-        followers= user.followers.all().select_related("follower")
-        data = [{"id": f.follower.id, "username": f.follower.username} for f in followers]
-        return Response(data, status=status.HTTP_200_OK)
+        followers_qs = user.followers.select_related('follower').all().order_by('-created_at')
+        users = [f.follower for f in followers_qs]
+        serializer = UserListSerializer(users, many=True, context={'request': request})
+        return Response({'count': followers_qs.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
     
 
 class FollowingListView(APIView):
@@ -61,6 +62,7 @@ class FollowingListView(APIView):
 
     def get(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
-        following = user.following.all().select_related("following")
-        data = [{"id": f.following.id, "username": f.following.username} for f in following]
-        return Response(data, status=status.HTTP_200_OK)
+        following_qs = user.following.select_related('following').all().order_by('-created_at')
+        users = [f.following for f in following_qs]
+        serializer = UserListSerializer(users, many=True, context={'request': request})
+        return Response({'count': following_qs.count(), 'results': serializer.data}, status=status.HTTP_200_OK)
