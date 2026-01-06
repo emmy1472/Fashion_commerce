@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,7 @@ SECRET_KEY = 'django-insecure-=#i+r^$@01fg*3%n41hh&n*54$3#szfmae6zt&2(+n^q%fu*t3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1:5500', '127.0.0.1:8000',  '127.0.0.1']
 
 AUTH_USER_MODEL = 'accounts.User'
 
@@ -48,7 +49,8 @@ INSTALLED_APPS = [
     'follows',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
-    'channels'
+    'channels',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
@@ -59,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'socialcom.urls'
@@ -92,6 +95,12 @@ CHANNEL_LAYERS = {
         }
     }
 }
+
+# Use in-memory channel layer for tests to avoid requiring Redis in dev setups
+if 'test' in sys.argv:
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    }
 
 
 # Database
@@ -137,6 +146,9 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ORIGINS = ['http://127.0.0.1:8000', 'http://127.0.0.1:5500']
 
 
 # Internationalization
