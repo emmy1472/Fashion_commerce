@@ -37,7 +37,10 @@ class Profile(models.Model):
     full_name = models.CharField(max_length=255, blank=True)
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=255, blank=True)
-    Profile_image = models.ImageField(upload_to="profiles/", blank=True, null=True)
+    # Keep db_column mapping for backwards compatibility with older migrations that
+    # created a field named 'Profile_image'. Using `db_column` avoids requiring an
+    # immediate schema migration to rename the underlying column.
+    profile_image = models.ImageField(upload_to="profiles/", blank=True, null=True, db_column='Profile_image')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -51,20 +54,26 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 
 class EmailVerification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
-    code = models.CharField(max_length=6, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    """One-time email verification code tied to a user.
 
-    def is_expired(self):
-        return timezone.now() > self.created_at + timedelta(minutes=10)
-    
-
-class PasswordResetOTP(models.Model):
+    The code expires after a short time and is removed after successful
+    verification to avoid reuse.
+    """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def is_expired(self):
+    def is_expired(self) -> bool:
+        return timezone.now() > self.created_at + timedelta(minutes=10)
+    
+
+class PasswordResetOTP(models.Model):
+    """One-time password reset code for users."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self) -> bool:
         return timezone.now() > self.created_at + timedelta(minutes=10)
     
 
@@ -84,4 +93,5 @@ class UserRole(models.Model):
         unique_together = ('user', 'role')
 
     def __str__(self):
-        return f"{self.user.email} -> {self.user.name}"
+        # User has no `name` field; prefer username or email for display
+        return f"{self.user.email} -> {self.role.name}"

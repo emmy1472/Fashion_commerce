@@ -13,24 +13,27 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'password', 'role', 'bio', 'profile_image']
 
-        def create(self, validated_data):
-            role_name = validated_data.pop('role')
-            try:
-                role = Role.objects.get(name_iexact=role_name)
-            except Role.DoesNotExist:
-                raise serializers.ValidationError({"role":"Invalid role name."})
-            
-            user = User.objects.create_user(
-                username = validated_data['email'],
-                role = role,
-                bio = validated_data.get('bio', ''),
-                profile_image = validated_data.get('profile_image', None)
-            )
+    def create(self, validated_data):
+        # Validate role against the choices on the User model
+        role_name = validated_data.pop('role')
+        allowed = [choice[0] for choice in User.ROLE_CHOICES]
+        if role_name not in allowed:
+            raise serializers.ValidationError({"role": "Invalid role name."})
 
-            user.set_password(validated_data['password'])
-            user.save()
+        password = validated_data.pop('password')
+        username = validated_data.get('username') or validated_data.get('email')
 
-            return user
+        user = User.objects.create_user(
+            username=username,
+            email=validated_data.get('email')
+        )
+        user.role = role_name
+        user.bio = validated_data.get('bio', '')
+        if validated_data.get('profile_image'):
+            user.profile_image = validated_data.get('profile_image')
+        user.set_password(password)
+        user.save()
+        return user
         
 
 class LoginSerializer(serializers.Serializer):
@@ -41,13 +44,16 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get("email")
         password = attrs.get("password")
         # Django authentication using email
-        user = authenticate(email=email, password=password)
+        # since USERNAME_FIELD = 'email' on our User model, pass it as username
+        user = authenticate(username=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
         # Generate tokens
         refresh = RefreshToken.for_user(user)
 
-        roles = UserRole.objects.filter(user=user).values_list("role__name", flat=True)
+        # Prefer role stored on User; also include any role objects
+        roles = [user.role] if getattr(user, 'role', None) else []
+        roles += list(UserRole.objects.filter(user=user).values_list("role__name", flat=True))
         return {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
@@ -81,7 +87,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 
-class verifyEmailSerializer(serializers.Serializer):
+class VerifyEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
 
@@ -95,6 +101,11 @@ class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
     new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        # Run Django password validators
+        validate_password(value)
+        return value
 
 
 class UserListSerializer(serializers.ModelSerializer):
