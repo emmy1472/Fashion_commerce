@@ -95,3 +95,10 @@ class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
     new_password = serializers.CharField(write_only=True)
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    """Serializer for listing users (public-facing fields)."""
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "role", "bio", "profile_image"]

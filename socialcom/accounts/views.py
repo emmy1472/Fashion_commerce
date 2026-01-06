@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ProfileSerializer, verifyEmailSerializer, RequestPasswordResetSerializer, ResetPasswordSerializer
+from .serializers import RegisterSerializer, LoginSerializer, LogoutSerializer, ProfileSerializer, verifyEmailSerializer, RequestPasswordResetSerializer, ResetPasswordSerializer, UserListSerializer
 from .generates import generate_code
 from .models import EmailVerification, User, PasswordResetOTP
 from django.core.mail import send_mail
@@ -142,3 +142,13 @@ class ResetPasswordView(APIView):
             return Response({"detail": "Password reset succesfully"}, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserListView(APIView):
+    """Return a list of users (public-facing)."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserListSerializer(users, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
