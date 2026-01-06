@@ -1,0 +1,3 @@
+daphne
+pytest
+pytest-asyncio
